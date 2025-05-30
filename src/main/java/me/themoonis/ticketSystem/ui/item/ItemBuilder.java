@@ -7,6 +7,7 @@ import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.Material;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemFlag;
@@ -106,12 +107,17 @@ public class ItemBuilder {
     }
 
     public ItemBuilder setHead(String owner) {
+        return setHead(Bukkit.getOfflinePlayer(owner));
+    }
+    public ItemBuilder setHead(UUID owner) {
+        return setHead(Bukkit.getOfflinePlayer(owner));
+    }
+    public ItemBuilder setHead(OfflinePlayer owner) {
         SkullMeta meta = (SkullMeta) stack.getItemMeta();
-        meta.setOwningPlayer(Bukkit.getOfflinePlayer(owner));
+        meta.setOwningPlayer(owner);
         setItemMeta(meta);
         return this;
     }
-
     public ItemBuilder setDisplayName(String displayName) {
         ItemMeta meta = getItemMeta();
         meta.displayName(Colorful.text(displayName));

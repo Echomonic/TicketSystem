@@ -22,7 +22,7 @@ import java.util.function.Consumer;
 
 public abstract class AbstractUserInterface implements IUserInterface, IUserInterfaceButtonStorage, IUserInterfaceCloseAction, IUserInterfaceDragAction {
 
-    private final PlayerManager playerManager;
+    protected final PlayerManager playerManager;
     private final Inventory inventory;
 
     protected IUserInterfacePhysical userInterfaceActions;

@@ -7,10 +7,12 @@ import io.papermc.paper.command.brigadier.argument.resolvers.selector.PlayerSele
 import io.papermc.paper.plugin.lifecycle.event.LifecycleEventManager;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import lombok.Getter;
+import me.themoonis.ticketSystem.file.json.YamlFile;
 import me.themoonis.ticketSystem.files.TicketStorageFile;
 import me.themoonis.ticketSystem.report.Ticket;
 import me.themoonis.ticketSystem.report.TicketReference;
 import me.themoonis.ticketSystem.report.TicketStorage;
+import me.themoonis.ticketSystem.ui.impl.AllTicketsUserInterface;
 import me.themoonis.ticketSystem.ui.listener.InventoryListener;
 import me.themoonis.ticketSystem.ui.managers.impl.PlayerManager;
 import me.themoonis.ticketSystem.ui.managers.impl.UserInterfaceManager;
@@ -47,6 +49,9 @@ public final class TicketSystem extends JavaPlugin {
     @Getter
     private UserInterfaceManager userInterfaceManager;
 
+    @Getter
+    private YamlFile configYaml;
+
     @Override
     public void onEnable() {
         Timestamp currentTime = new Timestamp(System.currentTimeMillis());
@@ -54,6 +59,11 @@ public final class TicketSystem extends JavaPlugin {
         cal.setTime(currentTime);
         cal.add(Calendar.DAY_OF_MONTH, -30);
         expiryTimeStamp = new Timestamp(cal.getTimeInMillis());
+
+        if(!getDataFolder().exists())
+            getDataFolder().mkdirs();
+
+        this.configYaml = YamlFile.create(getDataFolder(),"config");
 
         this.playerManager = new PlayerManager(this);
         this.userInterfaceManager = new UserInterfaceManager();
@@ -64,6 +74,10 @@ public final class TicketSystem extends JavaPlugin {
         ticketStorageFile.load();
         ticketStorageFile.read();
 
+        configYaml.load();
+
+        userInterfaceManager.add(AllTicketsUserInterface.class, new AllTicketsUserInterface(this));
+
         LifecycleEventManager<Plugin> eventManager = this.getLifecycleManager();
 
         final UUID ticketUUID = UUID.fromString("37f27d35-faf0-488c-a21c-b8feb22111d5");
@@ -72,6 +86,8 @@ public final class TicketSystem extends JavaPlugin {
 
         final String[] reasons = new String[]{"Hacking", "Spamming", "Inappropriate Skin"};
         final String description = "He was bhopping, flying, and using killaura. He also had a naked hitler skin. He was spamming the n word after killing people";
+
+
 
         eventManager.registerEventHandler(LifecycleEvents.COMMANDS, event -> {
             Commands commands = event.registrar();
@@ -82,7 +98,7 @@ public final class TicketSystem extends JavaPlugin {
                         CommandSourceStack source = context.getSource();
                         CommandSender sender = source.getSender();
 
-                        if(!(sender instanceof Player player)){
+                        if (!(sender instanceof Player player)) {
                             sender.sendMessage(Colorful.plugin("<red>You must be a player to perform this command."));
                             return 0;
                         }
@@ -91,56 +107,37 @@ public final class TicketSystem extends JavaPlugin {
 
 
                         return Command.SINGLE_SUCCESS;
-                    }))).then(literal("test").executes(context -> {
-                        CommandSender sender = context.getSource().getSender();
-                        ticketStorage.addTicket(ticketUUID, new Ticket(reporter, reported, Timestamp.from(Instant.now()), reasons, description));
-                        sender.sendMessage(Colorful.plugin("<green>Successfully added test ticket."));
-                        long delay = 40L;
+                    }))).then(literal("view")
+                            .requires(source -> source.getSender().hasPermission("ticketsystem.ticket.admin.view")).executes(context -> {
+                                CommandSender sender = context.getSource().getSender();
 
-                        Bukkit.getScheduler().runTaskLater(this, () -> {
-                            if (!ticketStorage.has(ticketUUID)) {
-                                sender.sendMessage(Colorful.plugin("<red>Failed to grab test ticket."));
-                                return;
-                            }
-                            sender.sendMessage(Colorful.plugin("<green>Successfully grabbed test ticket."));
-                            sender.sendMessage(Colorful.plugin(ticketStorage.getTicket(ticketUUID).toString()));
-                        }, delay);
-
-                        Bukkit.getScheduler().runTaskLater(this, () -> {
-                            TicketReference ticketReference = ticketStorage.getTicket(ticketUUID);
-                            ticketStorageFile.save(ticketReference);
-                            ticketStorageFile.write();
-                            sender.sendMessage(Colorful.plugin("<green>Successfully wrote test ticket to json."));
-                            sender.sendMessage(Colorful.plugin(ticketStorageFile.getJsonString()));
-                        }, delay + 40L);
-
-                        Bukkit.getScheduler().runTaskLater(this, () -> {
-                            ticketStorage.removeTicket(ticketUUID);
-                            ticketStorageFile.delete(ticketUUID);
-                            sender.sendMessage(Colorful.plugin("<green>Successfully deleted test ticket to json."));
-                            sender.sendMessage(Colorful.plugin(ticketStorageFile.getJsonString()));
-                        }, delay + 80L*2L);
-
-                        return Command.SINGLE_SUCCESS;
-                    }))
+                                if(!(sender instanceof Player player)){
+                                    sender.sendMessage(Colorful.plugin("<red>You must be a player to perform this command."));
+                                    return 0;
+                                }
+                                userInterfaceManager.get(AllTicketsUserInterface.class).open(player);
+                                return Command.SINGLE_SUCCESS;
+                            }))
                     .build());
 
         });
 
 
-        Bukkit.getPluginManager().registerEvents(new InventoryListener(),this);
+        Bukkit.getPluginManager().registerEvents(new InventoryListener(playerManager), this);
     }
 
     @Override
     public void onDisable() {
         expiryTimeStamp = null;
 
+        configYaml.unload();
+
         playerManager.clear();
         userInterfaceManager.clear();
 
         ticketStorage.save();
-
         ticketStorage.clear();
+
         ticketStorageFile.write();
     }
 }

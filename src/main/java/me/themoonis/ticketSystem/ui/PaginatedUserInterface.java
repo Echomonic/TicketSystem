@@ -76,10 +76,7 @@ public abstract class PaginatedUserInterface extends AbstractUserInterface {
             })).action((viewer, item, slot) -> {
                 if (page - 1 >= 0)
                     page -= 1;
-
-
                 viewer.playSound(Sound.sound(Key.key("ui.button.click"), Sound.Source.MASTER, 1, 2f));
-
                 open(viewer);
             }).slot(leftSlot).build());
 
