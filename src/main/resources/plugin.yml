@@ -1,0 +1,4 @@
+name: TicketSystem
+version: '1.0-SNAPSHOT'
+main: me.themoonis.ticketSystem.TicketSystem
+api-version: '1.21'
